@@ -33,6 +33,7 @@ http {
         index index.html;
 
         location / {
+            absolute_redirect off; # TODO полезно, но не помогает от поломки перехода на директорию без завершающего слэша при разных внешнем и внутреннем портах (docker run -p 80:82 ...)
             autoindex on;
             # autoindex_exact_size off;   # размеры в человекочитаемом виде (K, M, G)
             autoindex_format html;       # формат вывода: html (по умолчанию), json, xml
