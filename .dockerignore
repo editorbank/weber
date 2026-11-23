@@ -1,0 +1,4 @@
+app/*.bak
+*.tmp
+Dockerfile
+./*.sh

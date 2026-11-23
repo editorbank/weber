@@ -1,0 +1,1 @@
+docker build . -t weber --no-cache

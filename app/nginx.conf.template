@@ -1,0 +1,42 @@
+#user www-data;
+worker_processes auto;
+pid /tmp/nginx/nginx.pid;
+#error_log /tmp/nginx/error.log warn;
+error_log ${NGINX_ERROR_LOG};
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    #access_log /tmp/nginx/access.log;
+    access_log ${NGINX_ACCESS_LOG};
+
+    client_body_temp_path /tmp/nginx/client_body;
+    proxy_temp_path /tmp/nginx/proxy;
+    fastcgi_temp_path /tmp/nginx/fastcgi;
+    uwsgi_temp_path /tmp/nginx/uwsgi;
+    scgi_temp_path /tmp/nginx/scgi;
+
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+
+    server {
+        listen ${SERVICE_PORT};
+        server_name _;
+
+        root /tmp/www;
+        index index.html;
+
+        location / {
+            autoindex on;
+            # autoindex_exact_size off;   # размеры в человекочитаемом виде (K, M, G)
+            autoindex_format html;       # формат вывода: html (по умолчанию), json, xml
+            try_files $uri $uri/ =404;
+        }
+    }
+}
