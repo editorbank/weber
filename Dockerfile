@@ -22,12 +22,6 @@ RUN apt-get update \
         unzip \
     && rm -rf /var/lib/apt/lists/* \
     && chmod 0755 /app/*.sh
-#    && mkdir -p /tmp/nginx/client_body \
-#               /tmp/nginx/proxy \
-#               /tmp/nginx/fastcgi \
-#               /tmp/nginx/uwsgi \
-#               /tmp/nginx/scgi \
-#    && chown -R www-data:www-data /tmp/nginx \
 
 EXPOSE ${SERVICE_PORT}
 

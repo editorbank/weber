@@ -1,20 +1,24 @@
 #!/bin/sh
 set -eu -o pipefail
+APP_DIR="$(dirname $0)"
+source $APP_DIR/loglib.sh
 
-UPDATE_INTERVAL_MINUTES=${UPDATE_INTERVAL_MINUTES:-60}
-UPDATE_VERSION=${UPDATE_VERSION:-}
-export SERVICE_PATH=${SERVICE_PATH:-}
-export SERVICE_PORT=${SERVICE_PORT:-8080}
-export NGINX_ERROR_LOG=${NGINX_ERROR_LOG:-"/dev/stdout warn"}
-export NGINX_ACCESS_LOG=${NGINX_ACCESS_LOG:-off}
+log_info "Start ..."
 
+DEBUG=${DEBUG:-}
+UPDATE_VERSION="${UPDATE_VERSION:-}"
+UPDATE_INTERVAL_MINUTES="${UPDATE_INTERVAL_MINUTES:-60}"
+export SERVICE_PATH="${SERVICE_PATH:-}"
+export SERVICE_PORT="${SERVICE_PORT:-8080}"
+export NGINX_ERROR_LOG="${NGINX_ERROR_LOG:-/dev/stdout warn}"
+export NGINX_ACCESS_LOG="${NGINX_ACCESS_LOG:-off}"
+export NGINX_AUTH_REQUEST_URL="${NGINX_AUTH_REQUEST_URL:-http://127.0.0.1:$SERVICE_PORT/}"
 
 case "$UPDATE_INTERVAL_MINUTES" in
-    ''|*[!0-9]*) echo "UPDATE_INTERVAL_MINUTES must be a positive integer" >&2; exit 1 ;;
+    ''|*[!0-9]*) log_error "UPDATE_INTERVAL_MINUTES must be a positive integer" ;;
 esac
 if [ "$UPDATE_INTERVAL_MINUTES" -eq 0 ]; then
-    echo "UPDATE_INTERVAL_MINUTES must be a positive integer" >&2
-    exit 1
+    log_error "UPDATE_INTERVAL_MINUTES must be a positive integer"
 fi
 
 mkdir -p /tmp/nginx/client_body \
@@ -22,27 +26,30 @@ mkdir -p /tmp/nginx/client_body \
          /tmp/nginx/fastcgi \
          /tmp/nginx/uwsgi \
          /tmp/nginx/scgi
-#chown -R www-data:www-data /tmp/nginx
 
+log_info "Rendering nginx.conf ..."
+envsubst '$SERVICE_PATH $SERVICE_PORT $NGINX_ERROR_LOG $NGINX_ACCESS_LOG' < "/app/nginx.conf.template" > "/tmp/nginx/nginx.conf" 
 if [ -n "$DEBUG" ] ; then
-    echo "$(date -Iseconds) Parts from nginx.conf: "
-    envsubst '$SERVICE_PATH $SERVICE_PORT $NGINX_ERROR_LOG $NGINX_ACCESS_LOG' < "/app/nginx.conf.template" > "/tmp/nginx/nginx.conf" 
+    log_info "Debug: Parts from nginx.conf: "
     cat "/tmp/nginx/nginx.conf" | grep -E 'listen|location|_log'
-    echo "$(date -Iseconds) Environments:"
+    log_info "Debug: Environments:"
     env|sort
 fi
 
-echo "$(date -Iseconds) Update www-data ..."
-/app/update${UPDATE_VERSION}.sh
+log_info "Update www-data ..."
+$APP_DIR/update${UPDATE_VERSION}.sh
 
-(
-    while :; do
-        sleep "$((UPDATE_INTERVAL_MINUTES * 60))"
-        if ! /app/update${UPDATE_VERSION}.sh; then
-            echo "$(date -Iseconds) Content update failed" >&2
-        fi
-    done
-) &
+if [ "$UPDATE_INTERVAL_MINUTES" -ne 0 ]; then
+    (
+        while :; do
+            sleep "$((UPDATE_INTERVAL_MINUTES * 60))"
+            if ! $APP_DIR//update${UPDATE_VERSION}.sh; then
+                log_info "Content update failed"
+            fi
+        done
+    ) &
+fi
 
-echo "$(date -Iseconds) Run nginx ..."
+
+log_info "Run nginx ..."
 exec nginx -g 'daemon off;' -c "/tmp/nginx/nginx.conf" "$@"

@@ -1,1 +1,1 @@
-docker build . -t weber --no-cache
+docker build . -t weber --no-cache "$@"
